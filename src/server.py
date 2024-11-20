@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify, redirect
+import requests
 from flask_cors import CORS
 import sqlite3
 import os
 
 from tools import get_vue_port
+
+OPEN_ELEVATION_API_URL = "https://api.open-elevation.com/api/v1/lookup"
 
 class Server:
     def __init__(self, db_name="sensor_data.db"):
@@ -71,6 +74,24 @@ class Server:
             data = [{"Timer": row[0], "Latitude": row[1], "Longitude": row[2], "Altitude": row[3]} for row in rows]
             return jsonify(data)
 
+        @app.route('/api/gps-trace', methods=['GET'])
+        def get_gps_trace():
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT Timer, Latitude, Longitude 
+                FROM gpx_data 
+                WHERE Latitude IS NOT NULL AND Longitude IS NOT NULL
+            ''')
+            rows = cursor.fetchall()
+            conn.close()
+
+            # Inclure le champ Timer dans chaque point GPS
+            trace_data = [{"Timer": row[0], "Latitude": row[1], "Longitude": row[2]} for row in rows if row[1] and row[2]]
+            return jsonify(trace_data)
+
+
+        # Catch all route to redirect to Vue.js frontend
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def catch_all(path):
@@ -78,6 +99,36 @@ class Server:
                 return jsonify({"error": "Not Found"}), 404
             vue_port = int(get_vue_port())
             return redirect(f"http://localhost:{vue_port}/{path}", code=307)
+
+        @app.route('/api/calculate-altitude', methods=['POST'])
+        def calculate_altitude():
+            try:
+                data = request.get_json()  # Récupère les données envoyées dans la requête
+                gps_points = data.get("gps_points", [])
+
+                # Vérifier si les données sont valides
+                if not gps_points or not isinstance(gps_points, list):
+                    return jsonify({"error": "Invalid GPS data format"}), 400
+
+                # Assurez-vous que chaque point GPS contient les clés nécessaires
+                for point in gps_points:
+                    print("point", point)
+                    if "Latitude" not in point or "Longitude" not in point or "Timer" not in point:
+                        return jsonify({"error": "Missing required keys in GPS points"}), 400
+
+                # Exemple : Utiliser une API ou une fonction fictive pour calculer l'altitude
+                # Ici, nous supposons que chaque point retourne une altitude fictive
+                altitudes = [
+                    {"Timer": point["Timer"], "Altitude": point["Latitude"] + point["Longitude"] * 0.1}
+                    for point in gps_points
+                ]
+
+                return jsonify(altitudes), 200
+
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+
 
     def run(self, port=None):
         if port is None:

@@ -8,7 +8,7 @@ import subprocess
 class Application:
     def __init__(self, db_name="sensor_data.db"):
         self.db_name = db_name
-        self.csv_file_path = "./data/gpx-data.csv"
+        self.csv_file_path = "./data/test.csv"
         self.server_port = find_free_port()
         self.vue_port = 5173  # Port par défaut pour Vue.js
 
