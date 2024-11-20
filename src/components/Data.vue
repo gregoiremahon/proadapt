@@ -102,9 +102,11 @@ const loadData = async () => {
     const sensorData = await fetchData(`${baseURL}/api/sensor-data`);
     if (sensorData.length > 0) {
       accelerometerData.value.labels = sensorData.map((item) => item.Timer / 1000);
-      accelerometerData.value.leftLeg.x = sensorData.map((item) => item.Accel1X || 0);
+      // Jambe gauche (accelerometre 1)
+      accelerometerData.value.leftLeg.x = sensorData.map((item) => item.Accel1X || 0); 
       accelerometerData.value.leftLeg.y = sensorData.map((item) => item.Accel1Y || 0);
       accelerometerData.value.leftLeg.z = sensorData.map((item) => item.Accel1Z || 0);
+      // Jambe droite (accelerometre 2)
       accelerometerData.value.rightLeg.x = sensorData.map((item) => item.Accel2X || 0);
       accelerometerData.value.rightLeg.y = sensorData.map((item) => item.Accel2Y || 0);
       accelerometerData.value.rightLeg.z = sensorData.map((item) => item.Accel2Z || 0);
@@ -135,6 +137,8 @@ const loadData = async () => {
 
         map.value.fitBounds(polyline.getBounds());
       }
+    } else {
+      console.warn('Aucune donnée GPS valide trouvée.');
     }
   } catch (error) {
     console.error('Erreur lors du chargement des données :', error);
@@ -153,6 +157,7 @@ onMounted(() => {
       'Ceci est une carte :)',
   }).addTo(map.value)
 })
+
 </script>
 
 <template>
@@ -173,16 +178,16 @@ onMounted(() => {
               labels: accelerometerData.labels,
               datasets: [
                 {
-                  label: `Jambe gauche (${axis.toUpperCase()})`,
+                  label: `Accéléromètre 1 (${axis.toUpperCase()})`,
                   backgroundColor: 'rgba(75, 192, 192, 0.2)',
                   borderColor: 'rgba(75, 192, 192, 1)',
-                  data: accelerometerData.leftLeg[axis],
+                  data: accelerometerData.leftLeg[axis], // Données accéléromètre 1
                 },
                 {
-                  label: `Jambe droite (${axis.toUpperCase()})`,
+                  label: `Accéléromètre 2 (${axis.toUpperCase()})`,
                   backgroundColor: 'rgba(192, 75, 75, 0.2)',
                   borderColor: 'rgba(192, 75, 75, 1)',
-                  data: accelerometerData.rightLeg[axis],
+                  data: accelerometerData.rightLeg[axis], // Données accéléromètre 2
                 },
               ],
             }"
@@ -228,8 +233,12 @@ onMounted(() => {
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Tracé GPS de la course
         </h2>
-        <div id="map" class="map-container"></div>
+        <div v-if="gpsTrace.length > 0" id="map" class="map-container"></div>
+        <p v-else class="text-gray-500 dark:text-gray-400">
+          Enregistrez une activité à l'extérieur pour afficher votre tracé sur une carte :)
+        </p>
       </div>
+
     </div>
   </section>
 </template>
