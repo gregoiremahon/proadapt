@@ -110,23 +110,42 @@ class Server:
                 if not gps_points or not isinstance(gps_points, list):
                     return jsonify({"error": "Invalid GPS data format"}), 400
 
-                # Assurez-vous que chaque point GPS contient les clés nécessaires
+                # Vérifiez que chaque point GPS contient les clés nécessaires
                 for point in gps_points:
-                    print("point", point)
                     if "Latitude" not in point or "Longitude" not in point or "Timer" not in point:
                         return jsonify({"error": "Missing required keys in GPS points"}), 400
 
-                # Exemple : Utiliser une API ou une fonction fictive pour calculer l'altitude
-                # Ici, nous supposons que chaque point retourne une altitude fictive
+                # Préparer les données pour l'API Open Elevation
+                locations = [{"latitude": point["Latitude"], "longitude": point["Longitude"]} for point in gps_points]
+
+                # Envoyer une requête POST à l'API Open Elevation
+                response = requests.post(
+                    OPEN_ELEVATION_API_URL,
+                    json={"locations": locations},
+                    timeout=10  # Timeout de 10 secondes pour éviter les blocages
+                )
+
+                if response.status_code != 200:
+                    return jsonify({"error": "Failed to fetch altitude data from Open Elevation API"}), 502
+
+                elevation_data = response.json().get("results", [])
+
+                # Construire la réponse contenant les altitudes avec les timers correspondants
                 altitudes = [
-                    {"Timer": point["Timer"], "Altitude": point["Latitude"] + point["Longitude"] * 0.1}
-                    for point in gps_points
+                    {
+                        "Timer": gps_points[i]["Timer"],
+                        "Altitude": elevation_data[i].get("elevation", 0)
+                    }
+                    for i in range(len(elevation_data))
                 ]
 
                 return jsonify(altitudes), 200
 
+            except requests.exceptions.RequestException as e:
+                return jsonify({"error": f"Request to Open Elevation API failed: {str(e)}"}), 500
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
+
 
 
 

@@ -178,16 +178,16 @@ onMounted(() => {
               labels: accelerometerData.labels,
               datasets: [
                 {
-                  label: `Accéléromètre 1 (${axis.toUpperCase()})`,
+                  label: `Jambe gauche (${axis.toUpperCase()})`,
                   backgroundColor: 'rgba(75, 192, 192, 0.2)',
                   borderColor: 'rgba(75, 192, 192, 1)',
-                  data: accelerometerData.leftLeg[axis], // Données accéléromètre 1
+                  data: accelerometerData.leftLeg[axis],
                 },
                 {
-                  label: `Accéléromètre 2 (${axis.toUpperCase()})`,
+                  label: `Jambe droite (${axis.toUpperCase()})`,
                   backgroundColor: 'rgba(192, 75, 75, 0.2)',
                   borderColor: 'rgba(192, 75, 75, 1)',
-                  data: accelerometerData.rightLeg[axis], // Données accéléromètre 2
+                  data: accelerometerData.rightLeg[axis],
                 },
               ],
             }"
@@ -217,7 +217,11 @@ onMounted(() => {
               maintainAspectRatio: false,
               scales: {
                 x: { title: { display: true, text: 'Temps (secondes)' } },
-                y: { title: { display: true, text: 'Altitude (mètres)' } },
+                y: {
+                  title: { display: true, text: 'Altitude (mètres)' },
+                  min: 0,
+                  max: Math.max(...gpsData.datasets[0].data) + 5, // Dynamique -> Altitude max + 5m
+                },
               },
               plugins: { legend: { position: 'top' } },
             }"
@@ -233,10 +237,7 @@ onMounted(() => {
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Tracé GPS de la course
         </h2>
-        <div v-if="gpsTrace.length > 0" id="map" class="map-container"></div>
-        <p v-else class="text-gray-500 dark:text-gray-400">
-          Enregistrez une activité à l'extérieur pour afficher votre tracé sur une carte :)
-        </p>
+        <div id="map" class="map-container"></div>
       </div>
 
     </div>
