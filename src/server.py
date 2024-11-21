@@ -100,8 +100,14 @@ class Server:
             vue_port = int(get_vue_port())
             return redirect(f"http://localhost:{vue_port}/{path}", code=307)
 
+        # Route to calculate altitude using Open Elevation API
         @app.route('/api/calculate-altitude', methods=['POST'])
         def calculate_altitude():
+            """
+            Calcule les altitudes pour les points GPS fournis en utilisant l'API Open Elevation.
+            Les données GPS doivent être envoyées sous forme de liste de points GPS, chaque point contenant les clés "Latitude", "Longitude" et "Timer".
+            ATTENTION : Cette route nécessite une connexion Internet pour fonctionner. L'API Open Elevation peut être sujette à des blocages ou des limitations.
+            """
             try:
                 data = request.get_json()  # Récupère les données envoyées dans la requête
                 gps_points = data.get("gps_points", [])
