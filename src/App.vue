@@ -12,7 +12,7 @@ import Home from './components/Home.vue'
           <span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">ProAdapt</span>
         </router-link>
         <div class="flex items-center lg:order-2">
-          <a href="https://themesberg.com/product/tailwind-css/landing-page" class="text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 sm:mr-2 lg:mr-0 dark:bg-purple-600 dark:hover:bg-purple-700 focus:outline-none dark:focus:ring-purple-800">Connexion</a>
+          <router-link to="/login" class="text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-4 lg:px-5 py-2 lg:py-2.5 sm:mr-2 lg:mr-0 dark:bg-purple-600 dark:hover:bg-purple-700 focus:outline-none dark:focus:ring-purple-800">Connexion</router-link>
         </div>
         <div class="items-center justify-between hidden w-full lg:flex lg:w-auto lg:order-1">
           <ul class="flex flex-col mt-4 font-medium lg:flex-row lg:space-x-8 lg:mt-0">

@@ -4,19 +4,59 @@ import { ref } from 'vue'
 // Variables pour stocker les informations de connexion
 const email = ref('')
 const password = ref('')
+const name = ref('')
 const isNewUser = ref(false)
+const message = ref('')
+
+// Fonction utilitaire pour envoyer une requête HTTP
+async function sendRequest(endpoint, payload) {
+  console.log("Préparation de la requête pour :", endpoint, payload);
+  try {
+    const response = await fetch(`/api/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      message.value = errorData.error || "Erreur inconnue.";
+      console.error("Erreur retournée par le serveur :", errorData);
+      return;
+    }
+
+    const data = await response.json();
+    console.log("Réponse reçue :", data);
+    message.value = data.message;
+
+    // Rediriger vers une page après inscription réussie
+    if (endpoint === "signup") {
+      window.location.href = "/"; // Modifier l'URL pour rediriger après inscription
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de la requête :', error);
+    message.value = 'Erreur du serveur' + error;
+  }
+}
 
 // Fonction pour gérer la connexion
 function handleLogin() {
-  console.log('Connexion avec', email.value, password.value)
-  // Ajouter la logique de connexion ici
+  sendRequest('login', { email: email.value, password: password.value })
 }
 
 // Fonction pour gérer l'inscription
 function handleSignUp() {
-  console.log('Inscription avec', email.value, password.value)
-  // Ajouter la logique d'inscription ici
+  sendRequest('signup', { email: email.value, password: password.value, name: name.value }).then(() => {
+    // Redirection après inscription
+    if (message.value === "Inscription réussie.") {
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
+    }
+  });
 }
+
 </script>
 
 <template>
@@ -27,6 +67,18 @@ function handleSignUp() {
       </h1>
       
       <form @submit.prevent="isNewUser ? handleSignUp() : handleLogin()">
+        <!-- Champ Nom (visible uniquement lors de l'inscription) -->
+        <div v-if="isNewUser" class="mb-4">
+          <label for="name" class="block text-gray-700 dark:text-gray-400 mb-1">Nom</label>
+          <input
+            v-model="name"
+            type="text"
+            id="name"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:text-white"
+            required
+          />
+        </div>
+
         <!-- Champ Email -->
         <div class="mb-4">
           <label for="email" class="block text-gray-700 dark:text-gray-400 mb-1">Email</label>
@@ -50,6 +102,9 @@ function handleSignUp() {
             required
           />
         </div>
+
+        <!-- Message -->
+        <p v-if="message" class="text-sm text-center text-red-500 mb-4">{{ message }}</p>
 
         <!-- Bouton de Connexion ou d'Inscription -->
         <button
@@ -76,7 +131,3 @@ function handleSignUp() {
     </div>
   </section>
 </template>
-
-<style scoped>
-/* Styles supplémentaires pour la page de connexion */
-</style>

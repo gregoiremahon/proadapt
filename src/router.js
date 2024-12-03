@@ -5,7 +5,8 @@ import About from './components/About.vue'
 import Login from './components/Login.vue'
 import Data from './components/Data.vue'
 import DetailsTechniques from './components/DetailsTechniques.vue'
-import UserGuide from './components/UserGuide.vue';
+import UserGuide from './components/UserGuide.vue'
+import History from './components/History.vue'
 
 const routes = [
   {
@@ -37,6 +38,11 @@ const routes = [
     path: '/user-guide',
     name: 'UserGuide',
     component: UserGuide
+  },
+  {
+    path: '/historique',
+    name: 'History',
+    component: History
   }
 ]
 
