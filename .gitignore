@@ -10,3 +10,4 @@
 */.coverage
 */.coverage.*
 */flask-port.*
+/src/node_modules/.vite/deps_temp_44b2fca6
