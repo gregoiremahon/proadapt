@@ -43,7 +43,7 @@ export default defineConfig({
     strictPort: false, // Permet de changer de port si 5173 est occupé
     proxy: {
       '/api': {
-        target: `http://localhost:${getFlaskPort()}`, // Lit dynamiquement le port Flask
+        target: `http://127.0.0.1:${getFlaskPort()}`, // Lit dynamiquement le port Flask
         changeOrigin: true,
       },
     },

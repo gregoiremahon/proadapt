@@ -3,16 +3,20 @@ import requests
 from flask_cors import CORS
 import sqlite3
 import os
-
+import hashlib
+from user_database_manager import UserDatabaseManager
 from tools import get_vue_port
+
 
 OPEN_ELEVATION_API_URL = "https://api.open-elevation.com/api/v1/lookup"
 
 class Server:
-    def __init__(self, db_name="sensor_data.db"):
+    def __init__(self, db_name="sensor_data.db", user_db_name="user_data.db"):
         self.app = Flask(__name__)
         CORS(self.app)
         self.db_name = db_name
+        self.user_db_manager = UserDatabaseManager(user_db_name)
+        self.user_db_manager._initialize_database()
         self._initialize_routes()
 
     def _initialize_database(self):
@@ -98,7 +102,7 @@ class Server:
             if path.startswith("api"):
                 return jsonify({"error": "Not Found"}), 404
             vue_port = int(get_vue_port())
-            return redirect(f"http://localhost:{vue_port}/{path}", code=307)
+            return redirect(f"http://127.0.0.1:{vue_port}/{path}", code=307)
 
         # Route to calculate altitude using Open Elevation API
         @app.route('/api/calculate-altitude', methods=['POST'])
@@ -153,6 +157,67 @@ class Server:
                 return jsonify({"error": str(e)}), 500
 
 
+        @app.route('/api/signup', methods=['POST'])
+        def signup():
+            print("Requête reçue pour /api/signup")
+            try:
+                data = request.get_json()
+                print("Données reçues :", data)
+
+                if not data:
+                    return jsonify({"error": "Requête invalide, données manquantes."}), 400
+
+                email = data.get("email")
+                password = data.get("password")
+                name = data.get("name")
+
+                if not email or not password or not name:
+                    print("Erreur : Champs requis manquants.")
+                    return jsonify({"error": "Tous les champs sont requis."}), 400
+
+                # Vérifier si l'utilisateur existe déjà
+                if self.user_db_manager.get_user(email):
+                    print("Erreur : L'adresse e-mail est déjà utilisée.")
+                    return jsonify({"error": "L'adresse e-mail est déjà utilisée."}), 409
+
+                # Hacher le mot de passe
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                print("Mot de passe haché :", hashed_password)
+
+                # Ajouter l'utilisateur dans la base de données
+                self.user_db_manager.register_user(email, hashed_password, name)
+                print("Utilisateur inscrit :", email)
+                return jsonify({"message": "Inscription réussie."}), 201
+
+            except sqlite3.IntegrityError as e:
+                print("Erreur SQLite :", str(e))
+                return jsonify({"error": "Erreur dans la base de données."}), 500
+            except Exception as e:
+                print("Erreur inattendue :", str(e))
+                return jsonify({"error": "Erreur du serveur."}), 500
+
+
+        @app.route('/api/login', methods=['POST'])
+        def login():
+            """
+            Route pour connecter un utilisateur existant.
+            """
+            data = request.get_json()
+            email = data.get("email")
+            password = data.get("password")
+
+            # Vérifier les données
+            if not email or not password:
+                return jsonify({"error": "Email et mot de passe sont requis."}), 400
+
+            # Hacher le mot de passe pour la comparaison
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+            # Vérifier l'utilisateur dans la base de données
+            user = self.user_db_manager.get_user(email)
+            if user and user["password"] == hashed_password:
+                return jsonify({"message": "Connexion réussie.", "user": {"email": user["email"], "name": user["name"]}}), 200
+            return jsonify({"error": "E-mail ou mot de passe incorrect."}), 401
 
 
     def run(self, port=None):
