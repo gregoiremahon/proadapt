@@ -10,6 +10,4 @@
 */.coverage
 */.coverage.*
 */flask-port.*
-src/node_modules/.vite/deps/_metadata.json
-src/user_data.db
-src/sensor_data.db
+/src/node_modules/.vite/deps_temp_44b2fca6
