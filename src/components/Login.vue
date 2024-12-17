@@ -1,16 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuth } from '../auth'; // Importer le gestionnaire d'authentification
+
+const { login } = useAuth(); // Utiliser la fonction login pour mettre à jour l'état global
 
 // Variables pour stocker les informations de connexion
-const email = ref('')
-const password = ref('')
-const name = ref('')
-const isNewUser = ref(false)
-const message = ref('')
+const email = ref('');
+const password = ref('');
+const name = ref('');
+const isNewUser = ref(false);
+const message = ref('');
+const router = useRouter(); // Utilisation du router pour redirection
 
 // Fonction utilitaire pour envoyer une requête HTTP
 async function sendRequest(endpoint, payload) {
-  console.log("Préparation de la requête pour :", endpoint, payload);
+  console.log('Préparation de la requête pour :', endpoint, payload);
   try {
     const response = await fetch(`/api/${endpoint}`, {
       method: 'POST',
@@ -20,44 +25,46 @@ async function sendRequest(endpoint, payload) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      message.value = errorData.error || "Erreur inconnue.";
-      console.error("Erreur retournée par le serveur :", errorData);
+      message.value = errorData.error || 'Erreur inconnue.';
+      console.error('Erreur retournée par le serveur :', errorData);
       return;
     }
 
     const data = await response.json();
-    console.log("Réponse reçue :", data);
+    console.log('Réponse reçue :', data);
     message.value = data.message;
 
-    // Rediriger vers une page après inscription réussie
-    if (endpoint === "signup") {
-      window.location.href = "/"; // Modifier l'URL pour rediriger après inscription
+    if (endpoint === 'login') {
+      login(); // Mettre à jour l'état global comme connecté
+      router.push('/'); // Redirection vers la page d'accueil
     }
-
   } catch (error) {
     console.error('Erreur lors de la requête :', error);
-    message.value = 'Erreur du serveur' + error;
+    message.value = 'Erreur du serveur';
   }
 }
 
 // Fonction pour gérer la connexion
 function handleLogin() {
-  sendRequest('login', { email: email.value, password: password.value })
+  sendRequest('login', { email: email.value, password: password.value });
 }
 
 // Fonction pour gérer l'inscription
 function handleSignUp() {
-  sendRequest('signup', { email: email.value, password: password.value, name: name.value }).then(() => {
-    // Redirection après inscription
-    if (message.value === "Inscription réussie.") {
+  sendRequest('signup', {
+    email: email.value,
+    password: password.value,
+    name: name.value,
+  }).then(() => {
+    if (message.value === 'Inscription réussie.') {
       setTimeout(() => {
-        window.location.href = "/login";
+        router.push('/login');
       }, 2000);
     }
   });
 }
-
 </script>
+
 
 <template>
   <section class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen">

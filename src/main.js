@@ -9,4 +9,10 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 
-createApp(App).use(router).mount('#app')
+const app = createApp(App);
+
+// Ajouter un état global pour la connexion
+window.isAuthenticated = false;
+
+app.use(router);
+app.mount('#app');

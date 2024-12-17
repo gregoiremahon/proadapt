@@ -1,6 +1,6 @@
 <template>
-    <div class="container mx-auto px-4 py-20">
-      <h1 class="text-3xl font-bold mb-8 text-center">Caractéristiques Techniques de ProAdapt</h1>
+    <div class="container mx-auto bg-white dark:bg-gray-900 py-12 pt-28">
+      <h1 class="text-center text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white mb-8">Caractéristiques Techniques de ProAdapt</h1>
 
         <div class="introduction mb-8">
             <p>
