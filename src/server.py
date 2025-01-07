@@ -6,6 +6,7 @@ import os
 import hashlib
 from user_database_manager import UserDatabaseManager
 from tools import get_vue_port
+import threading
 
 
 OPEN_ELEVATION_API_URL = "https://api.open-elevation.com/api/v1/lookup"
@@ -218,6 +219,39 @@ class Server:
             if user and user["password"] == hashed_password:
                 return jsonify({"message": "Connexion réussie.", "user": {"email": user["email"], "name": user["name"]}}), 200
             return jsonify({"error": "E-mail ou mot de passe incorrect."}), 401
+
+        # Route pour recevoir les données Bluetooth
+        @app.route('/api/receive-bluetooth-data', methods=['POST'])
+        def receive_bluetooth_data():
+            print("Requête reçue pour /api/receive-bluetooth-data")
+            try:
+                data = request.get_json()  # Récupère les données envoyées par Bluetooth.vue
+                print("Données reçues :", data)
+
+                if not data:
+                    return jsonify({"error": "Aucune donnée reçue."}), 400
+
+                # Insertion dans la base de données SQLite
+                with sqlite3.connect('sensor_data.db') as conn:
+                    cursor = conn.cursor()
+
+                    for entry in data:
+                        cursor.execute('''
+                            INSERT INTO sensor_data (Timer, Accel1X, Accel1Y, Accel1Z, Gyro1X) 
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (entry["Timer"], entry["Accel1X"], entry["Accel1Y"], entry["Accel1Z"], entry["Gyro1X"]))
+
+                        cursor.execute('''
+                            INSERT INTO gpx_data (Timer, Latitude, Longitude) 
+                            VALUES (?, ?, ?)
+                        ''', (entry["Timer"], entry["Latitude"], entry["Longitude"]))
+
+                    conn.commit()
+
+                return jsonify({"message": "Données insérées avec succès."}), 200
+            except Exception as e:
+                print("Erreur :", e)
+                return jsonify({"error": str(e)}), 500
 
 
     def run(self, port=None):

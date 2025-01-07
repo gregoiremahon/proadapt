@@ -7,6 +7,7 @@ import Data from './components/Data.vue'
 import DetailsTechniques from './components/DetailsTechniques.vue'
 import UserGuide from './components/UserGuide.vue'
 import History from './components/History.vue'
+import Bluetooth from './components/Bluetooth.vue'
 
 const routes = [
   {
@@ -43,6 +44,11 @@ const routes = [
     path: '/historique',
     name: 'History',
     component: History
+  },
+  {
+    path: '/bluetooth',
+    name: 'Bluetooth',
+    component: Bluetooth
   }
 ]
 

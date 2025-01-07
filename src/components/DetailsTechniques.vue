@@ -1,3 +1,71 @@
+<script>
+import ComponentCard from "./ComponentCard.vue";
+
+export default {
+  components: { ComponentCard },
+  data() {
+    return {
+      components: [
+        {
+          name: "Batterie LiPo 4000 mAh",
+          description: "Fournit une autonomie de 8 heures d'entraînement continu.",
+          specs: [
+            { label: "Capacité", value: "4000 mAh" },
+            { label: "Autonomie", value: "8 heures en usage continu, 24 heures en veille" }
+          ],
+          link: "https://www.gotronic.fr/art-accu-lipo-3-7-vcc-4000-mah-l805080-31843.htm"
+        },
+        {
+          name: "ESP32",
+          description: "Module pour connexion Bluetooth et Wi-Fi, permettant la transmission en temps réel des données.",
+          specs: [
+            { label: "Connexion", value: "Bluetooth & Wi-Fi" },
+            { label: "Dimensions", value: "48 x 26 x 11.5 mm" }
+          ],
+          link: "https://www.gotronic.fr/art-module-nodemcu-esp32-28407.htm"
+        },
+        {
+          name: "Capteur GPS GOKU GM10 Nano V3",
+          description: "Permet le suivi de la position et de la vitesse en extérieur.",
+          specs: [
+            { label: "Précision", value: "Haute précision" },
+            { label: "Dimensions", value: "12 x 17 x 4.5 mm" }
+          ],
+          link: "https://www.drone-fpv-racer.com/gps-goku-gm10-nano-v3-flywoo-10844.html"
+        },
+        {
+          name: "Capteur de Flexion",
+          description: "Mesure les angles de flexion pour analyser la dynamique du mouvement.",
+          specs: [
+            { label: "Longueur", value: "112 mm" },
+            { label: "Placement", value: "Articulations de la prothèse" }
+          ],
+          link: "https://www.gotronic.fr/art-capteur-de-flexion-112-mm-fs2l095-30853.htm"
+        },
+        {
+          name: "Module MPU-6050",
+          description: "Capteur 6 DOF pour mesurer l'orientation et l'accélération.",
+          specs: [
+            { label: "Dimensions", value: "25 x 20 x 7 mm" },
+            { label: "Fonctions", value: "Accéléromètre & Gyroscope" }
+          ],
+          link: "https://www.gotronic.fr/art-module-6-dof-sen-mpu6050-31492.htm"
+        },
+        {
+          name: "Connecteur Magnétique",
+          description: "Recharge rapide et sécurisée du boîtier principal.",
+          specs: [
+            { label: "Type", value: "Magnétique" },
+            { label: "Compatibilité", value: "Recharge de la batterie principale" }
+          ],
+          link: "https://www.gotronic.fr/art-connecteur-magnetique-4-cts-ada5358-35225.htm"
+        }
+      ]
+    };
+  }
+};
+</script>
+
 <template>
     <div class="container mx-auto bg-white dark:bg-gray-900 py-12 pt-28">
       <h1 class="text-center text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white mb-8">Caractéristiques Techniques de ProAdapt</h1>
@@ -74,74 +142,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import ComponentCard from "./ComponentCard.vue";
-
-export default {
-  components: { ComponentCard },
-  data() {
-    return {
-      components: [
-        {
-          name: "Batterie LiPo 4000 mAh",
-          description: "Fournit une autonomie de 8 heures d'entraînement continu.",
-          specs: [
-            { label: "Capacité", value: "4000 mAh" },
-            { label: "Autonomie", value: "8 heures en usage continu, 24 heures en veille" }
-          ],
-          link: "https://www.gotronic.fr/art-accu-lipo-3-7-vcc-4000-mah-l805080-31843.htm"
-        },
-        {
-          name: "ESP32",
-          description: "Module pour connexion Bluetooth et Wi-Fi, permettant la transmission en temps réel des données.",
-          specs: [
-            { label: "Connexion", value: "Bluetooth & Wi-Fi" },
-            { label: "Dimensions", value: "48 x 26 x 11.5 mm" }
-          ],
-          link: "https://www.gotronic.fr/art-module-nodemcu-esp32-28407.htm"
-        },
-        {
-          name: "Capteur GPS GOKU GM10 Nano V3",
-          description: "Permet le suivi de la position et de la vitesse en extérieur.",
-          specs: [
-            { label: "Précision", value: "Haute précision" },
-            { label: "Dimensions", value: "12 x 17 x 4.5 mm" }
-          ],
-          link: "https://www.drone-fpv-racer.com/gps-goku-gm10-nano-v3-flywoo-10844.html"
-        },
-        {
-          name: "Capteur de Flexion",
-          description: "Mesure les angles de flexion pour analyser la dynamique du mouvement.",
-          specs: [
-            { label: "Longueur", value: "112 mm" },
-            { label: "Placement", value: "Articulations de la prothèse" }
-          ],
-          link: "https://www.gotronic.fr/art-capteur-de-flexion-112-mm-fs2l095-30853.htm"
-        },
-        {
-          name: "Module MPU-6050",
-          description: "Capteur 6 DOF pour mesurer l'orientation et l'accélération.",
-          specs: [
-            { label: "Dimensions", value: "25 x 20 x 7 mm" },
-            { label: "Fonctions", value: "Accéléromètre & Gyroscope" }
-          ],
-          link: "https://www.gotronic.fr/art-module-6-dof-sen-mpu6050-31492.htm"
-        },
-        {
-          name: "Connecteur Magnétique",
-          description: "Recharge rapide et sécurisée du boîtier principal.",
-          specs: [
-            { label: "Type", value: "Magnétique" },
-            { label: "Compatibilité", value: "Recharge de la batterie principale" }
-          ],
-          link: "https://www.gotronic.fr/art-connecteur-magnetique-4-cts-ada5358-35225.htm"
-        }
-      ]
-    };
-  }
-};
-</script>
 
 <style scoped>
 .container {

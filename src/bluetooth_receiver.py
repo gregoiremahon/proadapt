@@ -29,7 +29,7 @@ def delete_file_if_exists(file_path):
 
 
 class BluetoothReceiver:
-    def __init__(self, port="/dev/tty.ESP32R", baudrate=9600, db_name="sensor_data.db", csv_file="./data/sensor_data.csv"):
+    def __init__(self, port="/dev/tty.ESP32SYL", baudrate=9600, db_name="sensor_data.db", csv_file="./data/sensor_data.csv"):
         self.port = port
         self.baudrate = baudrate
         self.db_name = db_name
@@ -46,6 +46,36 @@ class BluetoothReceiver:
             print(f"Connected to ESP32 on {self.port} at {self.baudrate} baudrate.")
         except Exception as e:
             print(f"Failed to connect to ESP32: {e}")
+    
+    def insert_data_to_db(self, data):
+        """
+        Insère les données dans les tables 'sensor_data' et 'gpx_data'.
+        """
+        try:
+            with sqlite3.connect(self.db_name) as conn:
+                cursor = conn.cursor()
+                
+                # Insérer dans la table sensor_data (les 13 premières colonnes)
+                cursor.execute('''
+                    INSERT INTO sensor_data (
+                        Timer, Accel1X, Accel1Y, Accel1Z, 
+                        Gyro1X, Gyro1Y, Gyro1Z, 
+                        Accel2X, Accel2Y, Accel2Z, 
+                        Gyro2X, Gyro2Y, Gyro2Z
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', data[:13])
+                
+                # Insérer dans la table gpx_data (les données GPS)
+                cursor.execute('''
+                    INSERT INTO gpx_data (
+                        Timer, Latitude, Longitude, Altitude, Vitesse, Orientation, Satellites, HDOP
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', [data[0], data[14], data[15], data[16], data[17], data[18], data[19], data[20]])
+                
+                conn.commit()
+                print("Données insérées dans la base de données :", data)
+        except Exception as e:
+            print(f"Erreur lors de l'insertion dans la base de données : {e}")
 
     def write_data_to_csv(self, data):
         """
@@ -101,7 +131,8 @@ class BluetoothReceiver:
                 print("ICI : ", len(data) == len(HEADERS))
                 print("LEN DATA et LEN HEADERS : ", len(data), len(HEADERS))
                 if len(data) == len(HEADERS):
-                    self.write_data_to_csv(data)
+                    self.write_data_to_csv(data)  # Écriture dans le fichier CSV
+                    self.insert_data_to_db(data)  # Ajout dans la base de données
                 else:
                     print(f"Unexpected data format: {raw_data}")
 
