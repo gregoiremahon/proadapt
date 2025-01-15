@@ -10,21 +10,12 @@ const error = ref(''); // Gérer les erreurs lors de la récupération des donn�
 
 const fetchCourses = async () => {
   try {
-    // Données de test brutes
-    courses.value = [
-      {
-        file_name: 'course1.csv',
-        uploaded_at: '2024-12-01T10:00:00Z',
-      },
-      {
-        file_name: 'course2.csv',
-        uploaded_at: '2024-12-02T12:30:00Z',
-      },
-      {
-        file_name: 'course3.csv',
-        uploaded_at: '2024-12-03T15:45:00Z',
-      },
-    ];
+    const response = await fetch(`http://127.0.0.1:5173/api/get-courses?userId=${userId.value}`);
+    if (response.ok) {
+      courses.value = await response.json();
+    } else {
+      error.value = 'Impossible de récupérer les données.';
+    }
   } catch (err) {
     console.error('Erreur lors de la récupération des courses:', err);
     error.value = 'Impossible de récupérer les données. Veuillez réessayer plus tard.';

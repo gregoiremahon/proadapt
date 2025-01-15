@@ -24,7 +24,7 @@ class Application:
         self.logger.info("Initializing the database...")
         db_manager = DatabaseManager(self.db_name)
         db_manager.initialize_database()
-        db_manager.load_csv_to_db(csv_file_path=self.csv_file_path)
+        #db_manager.load_csv_to_db(csv_file_path=self.csv_file_path)
 
     def start_server(self):
         self.logger.info(f"Starting Flask server on port {self.server_port}...")

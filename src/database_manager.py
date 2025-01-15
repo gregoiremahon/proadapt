@@ -14,7 +14,7 @@ class DatabaseManager:
                 'Accel1X INTEGER', 'Accel1Y INTEGER', 'Accel1Z INTEGER',
                 'Gyro1X INTEGER', 'Gyro1Y INTEGER', 'Gyro1Z INTEGER',
                 'Accel2X INTEGER', 'Accel2Y INTEGER', 'Accel2Z INTEGER',
-                'Gyro2X INTEGER', 'Gyro2Y INTEGER', 'Gyro2Z INTEGER'
+                'Gyro2X INTEGER', 'Gyro2Y INTEGER', 'Gyro2Z INTEGER', 'Flexion INTEGER'
             ])
             self.create_table(cursor, 'gpx_data', [
                 'Timer INTEGER',
@@ -37,12 +37,16 @@ class DatabaseManager:
             with open(csv_file_path, 'r') as csv_file:
                 csv_reader = csv.DictReader(csv_file, delimiter=';')
                 for row in csv_reader:
+                    # Insertion dans la table `sensor_data` avec 14 colonnes
                     self.insert_into_table(cursor, 'sensor_data', [
                         row['Timer'], row['Accel1X'], row['Accel1Y'], row['Accel1Z'],
                         row['Gyro1X'], row['Gyro1Y'], row['Gyro1Z'],
                         row['Accel2X'], row['Accel2Y'], row['Accel2Z'],
-                        row['Gyro2X'], row['Gyro2Y'], row['Gyro2Z']
+                        row['Gyro2X'], row['Gyro2Y'], row['Gyro2Z'],  # 13 colonnes jusqu'ici
+                        row['Flexion']  # Ajout de la 14e colonne
                     ])
+                    
+                    # Insertion dans la table `gpx_data`
                     self.insert_into_table(cursor, 'gpx_data', [
                         row['Timer'], row.get('Latitude', None), row.get('Longitude', None),
                         row.get('Altitude', None), row.get('Vitesse', None),
@@ -55,3 +59,4 @@ class DatabaseManager:
         placeholders = ', '.join(['?'] * len(values))
         insert_query = f"INSERT INTO {table_name} VALUES ({placeholders})"
         cursor.execute(insert_query, values)
+        

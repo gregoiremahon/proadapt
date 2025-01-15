@@ -13,6 +13,7 @@ export default {
             { label: "Capacité", value: "4000 mAh" },
             { label: "Autonomie", value: "8 heures en usage continu, 24 heures en veille" }
           ],
+          image: "../assets/components/battery.jpg", // Image pour la batterie
           link: "https://www.gotronic.fr/art-accu-lipo-3-7-vcc-4000-mah-l805080-31843.htm"
         },
         {
@@ -22,6 +23,7 @@ export default {
             { label: "Connexion", value: "Bluetooth & Wi-Fi" },
             { label: "Dimensions", value: "48 x 26 x 11.5 mm" }
           ],
+          image: "../assets/components/esp32.jpg", // Image pour l'ESP32
           link: "https://www.gotronic.fr/art-module-nodemcu-esp32-28407.htm"
         },
         {
@@ -31,6 +33,7 @@ export default {
             { label: "Précision", value: "Haute précision" },
             { label: "Dimensions", value: "12 x 17 x 4.5 mm" }
           ],
+          image: "../assets/components/gps.jpg", // Image pour le GPS
           link: "https://www.drone-fpv-racer.com/gps-goku-gm10-nano-v3-flywoo-10844.html"
         },
         {
@@ -40,6 +43,7 @@ export default {
             { label: "Longueur", value: "112 mm" },
             { label: "Placement", value: "Articulations de la prothèse" }
           ],
+          image: "../assets/components/flexion-sensor.jpg", // Image pour le capteur de flexion
           link: "https://www.gotronic.fr/art-capteur-de-flexion-112-mm-fs2l095-30853.htm"
         },
         {
@@ -49,6 +53,7 @@ export default {
             { label: "Dimensions", value: "25 x 20 x 7 mm" },
             { label: "Fonctions", value: "Accéléromètre & Gyroscope" }
           ],
+          image: "../assets/components/mpu6050.jpg", // Image pour le MPU-6050
           link: "https://www.gotronic.fr/art-module-6-dof-sen-mpu6050-31492.htm"
         },
         {
@@ -58,6 +63,7 @@ export default {
             { label: "Type", value: "Magnétique" },
             { label: "Compatibilité", value: "Recharge de la batterie principale" }
           ],
+          image: "../assets/components/magnetic-connector.jpg", // Image pour le connecteur magnétique
           link: "https://www.gotronic.fr/art-connecteur-magnetique-4-cts-ada5358-35225.htm"
         }
       ]

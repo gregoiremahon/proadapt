@@ -35,6 +35,12 @@ async function sendRequest(endpoint, payload) {
     message.value = data.message;
 
     if (endpoint === 'login') {
+      // Stocker l'ID utilisateur (email) dans localStorage
+      if (data.userId) {
+        localStorage.setItem('user_id', data.userId);
+        console.log('ID utilisateur enregistré dans localStorage:', data.userId);
+      }
+
       login(); // Mettre à jour l'état global comme connecté
       router.push('/'); // Redirection vers la page d'accueil
     }

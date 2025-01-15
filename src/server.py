@@ -5,9 +5,16 @@ import sqlite3
 import os
 import hashlib
 from user_database_manager import UserDatabaseManager
+from database_manager import DatabaseManager
 from tools import get_vue_port
-import threading
+import csv
+import shutil
 
+
+def load_csv_file_to_database(csv_file_path, db_name="sensor_data.db"):
+    db_manager = DatabaseManager(db_name)
+    db_manager.initialize_database()
+    db_manager.load_csv_to_db(csv_file_path=csv_file_path)
 
 OPEN_ELEVATION_API_URL = "https://api.open-elevation.com/api/v1/lookup"
 
@@ -217,42 +224,203 @@ class Server:
             # Vérifier l'utilisateur dans la base de données
             user = self.user_db_manager.get_user(email)
             if user and user["password"] == hashed_password:
-                return jsonify({"message": "Connexion réussie.", "user": {"email": user["email"], "name": user["name"]}}), 200
+                # Renvoi de l'email comme identifiant utilisateur
+                return jsonify({"message": "Connexion réussie.", "userId": email}), 200
+                # return jsonify({"message": "Connexion réussie.", "user": {"email": user["email"], "name": user["name"]}}), 200
             return jsonify({"error": "E-mail ou mot de passe incorrect."}), 401
+            
+        @app.route('/api/clear-csv', methods=['POST'])
+        def clear_csv_file():
+            try:
+                # Chemin vers le fichier CSV
+                project_root = os.getcwd()  # Chemin racine du projet
+                temp_file_path = os.path.join(project_root, "esp32_data.csv")  # Fichier directement dans la racine
 
-        # Route pour recevoir les données Bluetooth
+                # Vérifier si le fichier existe
+                if os.path.isfile(temp_file_path):
+                    # Vérifier si le fichier n'est pas vide
+                    if os.path.getsize(temp_file_path) > 0:
+                        # Ouvrir le fichier en mode 'w' pour vider son contenu
+                        with open(temp_file_path, mode='w', newline='') as file:
+                            file.write("")  # Effacer tout le contenu du fichier
+                        print(f"Le fichier {temp_file_path} a été vidé avec succès.")
+                        return jsonify({"message": "Fichier vidé avec succès."}), 200
+                    else:
+                        return jsonify({"message": "Le fichier est déjà vide."}), 200
+                else:
+                    return jsonify({"error": "Fichier non trouvé."}), 404
+
+            except Exception as e:
+                print(f"Erreur lors de la suppression du contenu du fichier : {e}")
+                return jsonify({"error": str(e)}), 500
+
+
+        # Endpoint pour recevoir un fichier CSV
+        @app.route('/api/upload-csv', methods=['POST'])
+        def upload_csv():
+            if 'file' not in request.files:
+                return jsonify({"error": "Aucun fichier envoyé."}), 400
+
+            file = request.files['file']
+            print(f"Fichier reçu : {file.filename}")
+
+            # Sauvegarde du fichier dans un dossier temporaire
+            csv_file_path = os.path.join(os.getcwd(), "uploaded_esp32_data.csv")
+            file.save(csv_file_path)
+
+            # Charger le fichier CSV dans la base de données
+            try:
+                load_csv_file_to_database(csv_file_path=csv_file_path)
+                return jsonify({"message": "Fichier CSV chargé dans la base de données avec succès."}), 200
+            except Exception as e:
+                return jsonify({"error": f"Erreur lors du chargement du fichier CSV : {str(e)}"}), 500
+
+        
         @app.route('/api/receive-bluetooth-data', methods=['POST'])
         def receive_bluetooth_data():
-            print("Requête reçue pour /api/receive-bluetooth-data")
             try:
-                data = request.get_json()  # Récupère les données envoyées par Bluetooth.vue
-                print("Données reçues :", data)
+                data = request.get_json().get("data", [])
 
                 if not data:
                     return jsonify({"error": "Aucune donnée reçue."}), 400
 
-                # Insertion dans la base de données SQLite
-                with sqlite3.connect('sensor_data.db') as conn:
-                    cursor = conn.cursor()
+                # Définir les en-têtes pour le fichier CSV
+                headers = [
+                    "Timer", "Accel1X", "Accel1Y", "Accel1Z", "Gyro1X", "Gyro1Y", "Gyro1Z",
+                    "Accel2X", "Accel2Y", "Accel2Z", "Gyro2X", "Gyro2Y", "Gyro2Z",
+                    "Flexion", "Latitude", "Longitude", "Altitude", "Vitesse", "Orientation", "Satellites", "HDOP"
+                ]
 
+                # Créer le fichier CSV à la racine du projet
+                project_root = os.getcwd()  # Chemin racine du projet
+                temp_file_path = os.path.join(project_root, "esp32_data.csv")  # Fichier directement dans la racine
+
+                # Vérifier si le fichier existe déjà
+                file_exists = os.path.isfile(temp_file_path)
+                
+                with open(temp_file_path, mode='a', newline='') as file:
+                    writer = csv.DictWriter(file, fieldnames=headers, delimiter=";")
+
+                    # Écrire l'en-tête uniquement si le fichier n'existe pas encore
+                    if not file_exists:
+                        writer.writeheader()
+
+                    # Écrire les données reçues
                     for entry in data:
-                        cursor.execute('''
-                            INSERT INTO sensor_data (Timer, Accel1X, Accel1Y, Accel1Z, Gyro1X) 
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (entry["Timer"], entry["Accel1X"], entry["Accel1Y"], entry["Accel1Z"], entry["Gyro1X"]))
+                        writer.writerow({
+                            "Timer": entry.get("Timer"),
+                            "Accel1X": entry.get("Accel1X"),
+                            "Accel1Y": entry.get("Accel1Y"),
+                            "Accel1Z": entry.get("Accel1Z"),
+                            "Gyro1X": entry.get("Gyro1X"),
+                            "Gyro1Y": entry.get("Gyro1Y"),
+                            "Gyro1Z": entry.get("Gyro1Z"),
+                            "Accel2X": entry.get("Accel2X"),
+                            "Accel2Y": entry.get("Accel2Y"),
+                            "Accel2Z": entry.get("Accel2Z"),
+                            "Gyro2X": entry.get("Gyro2X"),
+                            "Gyro2Y": entry.get("Gyro2Y"),
+                            "Gyro2Z": entry.get("Gyro2Z"),
+                            "Flexion": entry.get("Flexion"),
+                            "Latitude": entry.get("Latitude"),
+                            "Longitude": entry.get("Longitude"),
+                            "Altitude": entry.get("Altitude"),
+                            "Vitesse": entry.get("Vitesse"),
+                            "Orientation": entry.get("Orientation"),
+                            "Satellites": entry.get("Satellites"),
+                            "HDOP": entry.get("HDOP")
+                        })
 
-                        cursor.execute('''
-                            INSERT INTO gpx_data (Timer, Latitude, Longitude) 
-                            VALUES (?, ?, ?)
-                        ''', (entry["Timer"], entry["Latitude"], entry["Longitude"]))
+                print(f"Fichier CSV mis à jour à la racine du projet : {temp_file_path}")
+                return jsonify({"message": "Fichier CSV mis à jour avec succès.", "file_path": temp_file_path}), 200
 
-                    conn.commit()
-
-                return jsonify({"message": "Données insérées avec succès."}), 200
             except Exception as e:
-                print("Erreur :", e)
+                print(f"Erreur lors de la mise à jour du fichier CSV : {e}")
                 return jsonify({"error": str(e)}), 500
 
+        @app.route('/api/save-course', methods=['POST'])
+        def save_course():
+            try:
+                data = request.get_json()
+                print("Données reçues par le serveur :", data)  # Ajout du log
+
+                user_id = data.get('userId')
+                file_name = data.get('file_name')
+                uploaded_at = data.get('uploaded_at')
+
+                if not user_id or not file_name or not uploaded_at:
+                    return jsonify({"error": "Données manquantes pour l'enregistrement."}), 400
+
+                # Connexion à la base de données
+                conn = sqlite3.connect("user_data.db")
+                cursor = conn.cursor()
+
+                # Création de la table courses si elle n'existe pas
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS courses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT,
+                        file_name TEXT,
+                        uploaded_at TEXT
+                    )
+                ''')
+
+                # Insertion des données de la course
+                cursor.execute('''
+                    INSERT INTO courses (user_id, file_name, uploaded_at)
+                    VALUES (?, ?, ?)
+                ''', (user_id, file_name, uploaded_at))
+
+                conn.commit()
+                conn.close()
+
+                return jsonify({"message": "Course enregistrée avec succès."}), 201
+
+            except Exception as e:
+                return jsonify({"error": f"Erreur lors de l'enregistrement : {str(e)}"}), 500
+
+
+
+        @app.route('/api/get-courses', methods=['GET'])
+        def get_courses():
+            user_id = request.args.get('userId')
+            if not user_id:
+                return jsonify({"error": "ID utilisateur manquant."}), 400
+
+            conn = sqlite3.connect("user_data.db")
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT file_name, uploaded_at FROM courses WHERE user_id = ?
+            ''', (user_id,))
+            rows = cursor.fetchall()
+            conn.close()
+
+            courses = [{"file_name": row[0], "uploaded_at": row[1]} for row in rows]
+            return jsonify(courses)
+
+
+        # Route pour charger le fichier CSV dans la base de données
+        @app.route('/api/load-csv-to-db', methods=['POST'])
+        def load_csv_to_db():
+            try:
+                # Chemin racine du projet
+                project_root = os.getcwd()
+                csv_file_path = os.path.join(project_root, "esp32_data.csv")
+
+                # Vérifier si le fichier CSV existe
+                if not os.path.isfile(csv_file_path):
+                    return jsonify({"error": "Fichier CSV non trouvé."}), 404
+
+                # Charger les données du fichier CSV dans la base de données
+                load_csv_file_to_database(csv_file_path=csv_file_path)
+
+                print(f"Le fichier CSV {csv_file_path} a été chargé dans la base de données.")
+                return jsonify({"message": "Fichier CSV chargé avec succès dans la base de données."}), 200
+
+            except Exception as e:
+                print(f"Erreur lors du chargement du fichier CSV dans la base de données : {e}")
+                return jsonify({"error": str(e)}), 500
 
     def run(self, port=None):
         if port is None:

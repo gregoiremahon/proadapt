@@ -29,7 +29,7 @@ def delete_file_if_exists(file_path):
 
 
 class BluetoothReceiver:
-    def __init__(self, port="/dev/tty.ESP32SYL", baudrate=9600, db_name="sensor_data.db", csv_file="./data/sensor_data.csv"):
+    def __init__(self, port="/dev/tty.ESP32R", baudrate=9600, db_name="sensor_data.db", csv_file="./data/sensor_data.csv"):
         self.port = port
         self.baudrate = baudrate
         self.db_name = db_name

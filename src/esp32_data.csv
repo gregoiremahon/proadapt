@@ -1,4 +1,4 @@
-Timer,Accel1X,Accel1Y,Accel1Z,Gyro1X,Gyro1Y,Gyro1Z,Accel2X,Accel2Y,Accel2Z,Gyro2X,Gyro2Y,Gyro2Z,Flexion,Latitude,Longitude,Altitude,Vitesse,Orientation,Satellites,HDOP
+Timer;Accel1X;Accel1Y;Accel1Z;Gyro1X;Gyro1Y;Gyro1Z;Accel2X;Accel2Y;Accel2Z;Gyro2X;Gyro2Y;Gyro2Z;Flexion;Latitude;Longitude;Altitude;Vitesse;Orientation;Satellites;HDOP;
 515;18724;96;644;-12058;-201;881;14392;-2360;32767;74;360;88;124;;;;;;;;
 2539;19236;480;1164;-12011;-89;884;14940;-2060;32767;92;412;142;34;;;;;;;;
 4558;18684;408;1028;-12003;-199;897;14604;-2244;32767;50;356;23;23;;;;;;;;

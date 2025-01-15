@@ -12,37 +12,37 @@ const teamMembers = [
     name: "Jonathan QUEYROI",
     role: "Directeur Commercial",
     description: "Expert en gestion commerciale avec un œil stratégique sur l'optimisation de la performance de ProAdapt.",
-    imageUrl: "/src/assets/Photo-Profil/Jonathan.jpg"
+    imageUrl: "../assets/Photo-Profil/Jonathan.jpg"
   },
   {
     name: "Sylvain PLAZE",
     role: "Ingénieure en Mécanique",
     description: "Spécialiste en conception et développement de solutions mécaniques pour optimiser les performances des athlètes.",
-    imageUrl: "/src/assets/Photo-Profil/Sylvain.jpg"
+    imageUrl: "../assets/Photo-Profil/Sylvain.jpg"
   },
   {
     name: "Grégoire MAHON",
     role: "Ingénieur Électronique",
     description: "Responsable de l'intégration des capteurs et du développement de la connectivité du projet ProAdapt.",
-    imageUrl: "/src/assets/Photo-Profil/Gregoire.jpg"
+    imageUrl: "../assets/Photo-Profil/Gregoire.jpg"
   },
   {
     name: "Mohamed Zaidi",
     role: "Ingénieure Biomédicale",
     description: "Experte en analyse biomédicale, Sophie s'assure que les solutions ProAdapt respectent les normes de santé et sécurité.",
-    imageUrl: "/src/assets/Photo-Profil/Ashraf.jpg"
+    imageUrl: "../assets/Photo-Profil/Ashraf.jpg"
   },
   {
     name: "Chahine BOUKHENAISSI",
     role: "Ingénieur en Informatique",
     description: "Développeur principal de l'application ProAdapt, garantissant une expérience utilisateur fluide et performante.",
-    imageUrl: "/src/assets/Photo-Profil/Chahine.jpg"
+    imageUrl: "../assets/Photo-Profil/Chahine.jpg"
   },
   {
     name: "Armand LELONG",
     role: "Designer UX/UI",
     description: "Lucie conçoit l'interface utilisateur pour que l'expérience de ProAdapt soit aussi agréable qu'efficace.",
-    imageUrl: "/src/assets/Photo-Profil/Armand.jpg"
+    imageUrl: "../assets/Photo-Profil/Armand.jpg"
   }
 ];
 
