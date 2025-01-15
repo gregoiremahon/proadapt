@@ -155,52 +155,6 @@ const calculateAltitude = async (gpsTrace) => {
   }
 };
 
-// Fonction pour convertir des degrés en radians
-function toRadians(degrees) {
-  return degrees * (Math.PI / 180);
-}
-
-// Fonction pour calculer la distance entre deux points GPS (formule de Haversine)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Rayon de la Terre en mètres
-  const φ1 = toRadians(lat1);
-  const φ2 = toRadians(lat2);
-  const Δφ = toRadians(lat2 - lat1);
-  const Δλ = toRadians(lon2 - lon1);
-
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // Distance en mètres
-}
-
-// Fonction pour calculer la vitesse à partir des données GPS
-function calculateSpeed(sensorData) {
-  let speedArray = [];
-
-  for (let i = 1; i < sensorData.length; i++) {
-    const prevPoint = sensorData[i - 1];
-    const currentPoint = sensorData[i];
-
-    const distance = calculateDistance(
-      prevPoint.Latitude, prevPoint.Longitude,
-      currentPoint.Latitude, currentPoint.Longitude
-    );
-
-    const timeDiff = (currentPoint.Timer - prevPoint.Timer) / 1000; // Temps en secondes
-
-    const speed = timeDiff > 0 ? (distance / timeDiff) : 0; // Vitesse en m/s
-    speedArray.push((speed * 3.6).toFixed(2)); // Convertir en km/h
-  }
-
-  // Ajouter une vitesse nulle pour le premier point
-  speedArray.unshift(0);
-  return speedArray;
-}
-
-
 // Fonction principale pour charger les données
 const loadData = async () => {
   try {
@@ -221,29 +175,7 @@ const loadData = async () => {
       accelerometerData.value.rightLeg.z = sensorData.map((item) => item.Accel2Z || 0);
 
       const labels = sensorData.map((item) => (item.Timer / 1000).toFixed(2))
-
-      paceData.value.labels = labels
-      asymmetryData.value.labels = labels
-
-      paceData.value.datasets[0].data = sensorData.map((item) => {
-        const kmh = item.Vitesse ? item.Vitesse * 3.6 : 0
-        return kmh > 0 ? (60 / kmh).toFixed(2) : 0 // min/km
-      })
-
-      asymmetryData.value.datasets[0].data = sensorData.map((item) => {
-        const leftLeg = Math.abs(item.Accel1X || 0)
-        const rightLeg = Math.abs(item.Accel2X || 0)
-        return ((Math.abs(leftLeg - rightLeg) / ((leftLeg + rightLeg) / 2)) * 100).toFixed(2)
-      })
-
-      // Calcul de la cadence
-      const zLeftLeg = sensorData.map((item) => item.Accel1Z || 0) // Axe Z pour la jambe gauche
-      const zRightLeg = sensorData.map((item) => item.Accel2Z || 0) // Axe Z pour la jambe droite
-      const peaks = detectPeaks(zLeftLeg, zRightLeg)
-
-      cadenceData.value.labels = labels
-      cadenceData.value.datasets[0].data = peaks.map((count) => count * 60) // Cadence en pas par minute
-      console.log("Pics détectés :", detectPeaks(zLeftLeg, zRightLeg));
+      accelerometerData.value.labels = labels;
     }
 
     // Charger les données GPS (tracé + altitude)
@@ -291,30 +223,6 @@ onMounted(() => {
       'Ceci est une carte :)',
   }).addTo(map.value)
 })
-
-function detectPeaks(zLeftLeg, zRightLeg) {
-  const threshold = 8000; // Ajusté pour une sensibilité correcte
-  let peakCounts = [];
-  let count = 0;
-
-  // Parcours des données pour détecter les pics
-  for (let i = 1; i < zLeftLeg.length - 1; i++) {
-    if (
-      (zLeftLeg[i] > threshold && zLeftLeg[i] > zLeftLeg[i - 1] && zLeftLeg[i] > zLeftLeg[i + 1]) || 
-      (zRightLeg[i] > threshold && zRightLeg[i] > zRightLeg[i - 1] && zRightLeg[i] > zRightLeg[i + 1])
-    ) {
-      count++;
-    }
-
-    // Ajout de la cadence toutes les 5 secondes
-    if (i % 100 === 0) {
-      peakCounts.push(count);
-      count = 0;
-    }
-  }
-
-  return peakCounts;
-}
 
 
 // Fonction pour enregistrer la course

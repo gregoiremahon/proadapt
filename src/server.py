@@ -9,6 +9,7 @@ from database_manager import DatabaseManager
 from tools import get_vue_port
 import csv
 import shutil
+import gpxpy
 
 
 def load_csv_file_to_database(csv_file_path, db_name="sensor_data.db"):
@@ -421,6 +422,39 @@ class Server:
             except Exception as e:
                 print(f"Erreur lors du chargement du fichier CSV dans la base de données : {e}")
                 return jsonify({"error": str(e)}), 500
+
+        @app.route('/api/gpx-to-csv', methods=['POST'])
+        def gpx_to_csv():
+            if 'file' not in request.files:
+                return jsonify({"error": "Aucun fichier GPX envoyé."}), 400
+
+            file = request.files['file']
+            gpx_data = file.read().decode('utf-8')
+
+            # Analyse du fichier GPX
+            gpx = gpxpy.parse(gpx_data)
+
+            # Préparer les données pour le CSV
+            data = []
+            for track in gpx.tracks:
+                for segment in track.segments:
+                    for point in segment.points:
+                        data.append({
+                            "Timer": point.time.strftime("%Y-%m-%d %H:%M:%S") if point.time else "",
+                            "Latitude": point.latitude,
+                            "Longitude": point.longitude,
+                            "Altitude": point.elevation
+                        })
+
+            # Sauvegarde en CSV
+            csv_file_path = os.path.join(os.getcwd(), "converted_gpx_data.csv")
+            with open(csv_file_path, mode='w', newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=["Timer", "Latitude", "Longitude", "Altitude"], delimiter=";")
+                writer.writeheader()
+                writer.writerows(data)
+
+            print(f"Fichier CSV créé : {csv_file_path}")
+            return jsonify({"message": "Fichier GPX converti en CSV avec succès.", "file_path": csv_file_path}), 200
 
     def run(self, port=None):
         if port is None:
