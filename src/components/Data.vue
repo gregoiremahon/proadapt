@@ -102,9 +102,9 @@ const cadenceData = ref({
       borderWidth: 2,
       pointRadius: 2,
       data: [],
-      average: 0,
     },
   ],
+  average: "--", // Initialisation avec "--"
 })
 
 const gpxFile = ref(null);
@@ -154,42 +154,36 @@ const loadGpsData = async () => {
     if (response.ok) {
       gpsPoints = await response.json();
 
-      console.log("Données GPS récupérées :", gpsPoints);
+      if (gpsPoints.length > 0) {
+        // Labels (temps)
+        gpsData.value.labels = gpsPoints.map((point) => (point.Timer / 1000).toFixed(2));
 
-      // Labels (temps)
-      gpsData.value.labels = gpsPoints.map((point) => (point.Timer / 1000).toFixed(2));
+        // Altitude
+        gpsData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Altitude || 0));
 
-      // Altitude
-      gpsData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Altitude || 0));
+        // Vitesse
+        speedData.value.labels = gpsData.value.labels;
+        speedData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Vitesse || 0));
+        speedData.value.average = calculateAverage(speedData.value.datasets[0].data);
 
-      // Vitesse
-      speedData.value.labels = gpsData.value.labels;
-      speedData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Vitesse || 0));
-      speedData.value.average = gpsPoints.length
-        ? calculateAverage(speedData.value.datasets[0].data)
-        : 0;
+        // Allure
+        paceData.value.labels = gpsData.value.labels;
+        paceData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Allure || 0));
+        paceData.value.average = calculateAverage(paceData.value.datasets[0].data);
 
-      console.log("Données de vitesse :", speedData.value);
+        // Tracé GPS
+        gpsTrace.value = gpsPoints.map((point) => ({
+          lat: parseFloat(point.Latitude),
+          lng: parseFloat(point.Longitude),
+        }));
 
-      // Allure
-      paceData.value.labels = gpsData.value.labels;
-      paceData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Allure || 0));
-      paceData.value.average = gpsPoints.length
-        ? calculateAverage(paceData.value.datasets[0].data)
-        : 0;
-
-      console.log("Données d'allure :", paceData.value);
-
-      // Tracé GPS
-      gpsTrace.value = gpsPoints.map((point) => ({
-        lat: parseFloat(point.Latitude),
-        lng: parseFloat(point.Longitude),
-      }));
-
-      if (map.value) {
-        const polyline = L.polyline(gpsTrace.value, { color: "blue" });
-        polyline.addTo(map.value);
-        map.value.fitBounds(polyline.getBounds());
+        if (map.value) {
+          const polyline = L.polyline(gpsTrace.value, { color: "blue" });
+          polyline.addTo(map.value);
+          map.value.fitBounds(polyline.getBounds());
+        }
+      } else {
+        console.warn("Aucune donnée GPS détectée.");
       }
     } else {
       console.error("Erreur lors du chargement des données GPS :", await response.json());
@@ -197,26 +191,31 @@ const loadGpsData = async () => {
   } catch (error) {
     console.error("Erreur lors de la requête pour les données GPS :", error);
   }
-
-  // Définitions par défaut si aucune donnée n'est présente
+  
+  // Réinitialisation si aucune donnée n'est présente
   if (gpsPoints.length === 0) {
-    speedData.value.labels = [];
-    speedData.value.datasets[0].data = [];
-    speedData.value.average = 0;
-
-    paceData.value.labels = [];
-    paceData.value.datasets[0].data = [];
-    paceData.value.average = 0;
+    speedData.value = { labels: [], datasets: [{ ...speedData.value.datasets[0], data: [] }], average: 0 };
+    paceData.value = { labels: [], datasets: [{ ...paceData.value.datasets[0], data: [] }], average: 0 };
   }
+  if (gpsPoints.length > 0) {
+  paceData.value.labels = gpsPoints.map((point) => (point.Timer / 1000).toFixed(2));
+  paceData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Allure || 0));
+  paceData.value.average = calculateAverage(paceData.value.datasets[0].data);
+  } else {
+  paceData.value.labels = [];
+  paceData.value.datasets[0].data = [];
+  paceData.value.average = 0;
+  }
+
+  console.log("Valeurs moyennes : ", speedData.value.average, paceData.value.average);
+
 };
-
-
 
 // Calcul d'une valeur moyenne arrondie à 2 décimales
 const calculateAverage = (data) => {
   if (data.length === 0) return 0;
   const sum = data.reduce((total, value) => total + value, 0);
-  return (sum / data.length).toFixed(2); // Arrondi à 2 décimales
+  return parseFloat((sum / data.length).toFixed(2)); // Arrondi à 2 décimales
 };
 
 // Fonction pour calculer la médiane
@@ -276,7 +275,6 @@ const calculateAsymmetry = (data) => {
     const leftZ = Math.abs(item.Accel1Z || 0);
     const rightZ = Math.abs(item.Accel2Z || 0);
     if (leftZ + rightZ === 0){
-      console.log("Division par zéro évitée");
       return 0; // Éviter la division par zéro
     }
     return (Math.abs(leftZ - rightZ) / (leftZ + rightZ)) * 100; // Asymétrie en %
@@ -288,7 +286,7 @@ const calculateCadence = (data) => {
   let peaks = 0;
   let lastTime = 0;
 
-  const threshold = 5000; // Seuil pour détecter un impact (ajuster selon les données)
+  const threshold = 5000; // Seuil pour détecter un impact
   const cadenceData = data.map((item, index) => {
     const zAccel = item.Accel1Z || 0; // Accélération verticale
     const time = item.Timer / 1000; // Temps en secondes
@@ -351,11 +349,17 @@ const processAdditionalMetrics = (sensorData) => {
         showLine: false, // Pas de connexion entre points
       },
     ],
+    average: 0, // Valeur par défaut
   };
 
   // Calculer et mettre à jour la moyenne de la cadence
-  cadenceData.value.average = calculateAverage(cadence);
+  cadenceData.value.average = cadence.length > 0 ? calculateAverage(cadence) : "--";
   console.log("Cadence moyenne calculée :", cadenceData.value.average);
+
+  cadenceData.value = {
+  ...cadenceData.value,
+  average: cadence.length > 0 ? calculateAverage(cadence) : "--",
+  };
 };
 
 // Fonction pour traiter les données d'accéléromètre
@@ -597,66 +601,67 @@ const saveCourse = async () => {
       </div>
       
       <!-- Graphique de la vitesse -->
-      <div class="max-w-4xl mx-auto text-center mb-20 chart-container">
+      <div class="max-w-4xl mx-auto text-center mb-20 chart-container" v-if="speedData?.labels?.length > 0">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          Vitesse (km/h) 
+          Vitesse (km/h)
         </h2>
-        <div v-if="gpsData.labels.length > 0" class="chart-container">
-          <p class="average-text">
-            Moyenne : {{ speedData.value?.average !== undefined ? speedData.value.average : '--' }} km/h
-          </p>
-          <Line
-            :data="speedData"
-            :options="{
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                x: { title: { display: true, text: 'Temps (secondes)' } },
-                y: { title: { display: true, text: 'Vitesse (km/h)' }, min: 0 },
-              },
-              plugins: { legend: { position: 'top' } },
-            }"
-          />
-      </div>
-        <p v-else class="text-gray-500 dark:text-gray-400">
-          Aucune donnée GPS disponible.
+        <p class="average-text" v-if="speedData.value?.average !== undefined">
+          Moyenne : {{ speedData.value.average }} km/h
         </p>
+        <Line
+          :data="speedData"
+          :options="{
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { title: { display: true, text: 'Temps (secondes)' } },
+              y: { title: { display: true, text: 'Vitesse (km/h)' }, min: 0 },
+            },
+            plugins: { legend: { position: 'top' } },
+          }"
+        />
       </div>
+      <p v-else class="text-gray-500 dark:text-gray-400">
+        Aucune donnée de vitesse disponible.
+      </p>
 
       <!-- Graphique de l'allure -->
-      <div class="max-w-4xl mx-auto text-center mb-20 chart-container">
+      <div class="max-w-4xl mx-auto text-center mb-20 chart-container" v-if="paceData?.labels?.length > 0">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Allure (min/km) 
-          </h2>
-        <div v-if="gpsData.labels.length > 0" class="chart-container">
-          <p class="average-text">
-            Moyenne : {{ paceData.value?.average !== undefined ? paceData.value.average : '--' }} min/km
-          </p>
-          <Line
-            :data="paceData"
-            :options="{
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                x: { title: { display: true, text: 'Temps (secondes)' } },
-                y: { title: { display: true, text: 'Allure (min/km)' }, min: 0, max: 20 },
-              },
-              plugins: { legend: { position: 'top' } },
-            }"/>
-        </div>
-        <p v-else class="text-gray-500 dark:text-gray-400">
-          Aucune donnée GPS disponible.
+          Allure (min/km)
+        </h2>
+        <p class="average-text">
+          Moyenne : {{ paceData?.value?.average }} min/km
         </p>
+        <Line
+          :data="paceData"
+          :options="{
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { title: { display: true, text: 'Temps (secondes)' } },
+              y: { title: { display: true, text: 'Allure (min/km)' }, min: 0, max: 20 },
+            },
+            plugins: { legend: { position: 'top' } },
+          }"
+        />
       </div>
+      <p v-else class="text-gray-500 dark:text-gray-400">
+        Aucune donnée d'allure disponible.
+      </p>
 
       <!-- Graphique de la cadence -->
       <div class="max-w-4xl mx-auto mb-20 chart-wrapper">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Cadence (pas par minute)
         </h2>
-        <p class="average-text">
-          Moyenne : {{ cadenceData.value?.average !== undefined ? cadenceData.value.average : '--' }} pas/min
+        <p class="average-text" v-if="cadenceData && cadenceData.value">
+          Moyenne : {{ isNaN(cadenceData.value.average) ? '--' : cadenceData.value.average }} pas/min
         </p>
+        <p v-else>
+          Chargement des données...
+        </p>
+
         <Line
           :data="cadenceData"
           :options="{
