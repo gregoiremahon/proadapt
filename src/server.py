@@ -10,6 +10,9 @@ from tools import get_vue_port
 import csv
 import shutil
 import gpxpy
+from flask import send_file
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 
 def load_csv_file_to_database(csv_file_path, db_name="sensor_data.db"):
@@ -455,6 +458,67 @@ class Server:
 
             print(f"Fichier CSV créé : {csv_file_path}")
             return jsonify({"message": "Fichier GPX converti en CSV avec succès.", "file_path": csv_file_path}), 200
+
+        @app.route('/api/generate-pdf', methods=['GET'])
+        def generate_pdf():
+            try:
+                file_name = request.args.get('file_name')
+                if not file_name:
+                    print("Erreur: Nom du fichier manquant.")
+                    return jsonify({"error": "Nom du fichier manquant."}), 400
+
+                csv_file_path = os.path.join(os.getcwd(), "data", file_name)
+                print(f"Chemin du fichier CSV : {csv_file_path}")
+
+                if not os.path.isfile(csv_file_path):
+                    print("Erreur: Fichier introuvable.")
+                    return jsonify({"error": "Fichier introuvable."}), 404
+
+                pdf_path = os.path.join(os.getcwd(), "generated_reports", f"{file_name}.pdf")
+                os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+                with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.DictReader(csvfile, delimiter=";")
+                    data = list(reader)
+
+                print(f"Nombre de lignes lues: {len(data)}")
+
+                if len(data) == 0:
+                    print("Erreur: Aucune donnée dans le fichier CSV.")
+                    return jsonify({"error": "Aucune donnée trouvée dans le fichier."}), 500
+
+                # Création du PDF
+                c = canvas.Canvas(pdf_path, pagesize=letter)
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(50, 750, f"Rapport de la course : {file_name}")
+
+                c.setFont("Helvetica", 12)
+                y_position = 720
+                for index, row in enumerate(data[:20]):
+                    if y_position < 100:
+                        c.showPage()
+                        c.setFont("Helvetica", 12)
+                        y_position = 750
+
+                    try:
+                        vitesse = row.get("Vitesse", "0") or "0"  # Vérifier si la clé existe
+                        altitude = row.get("Altitude", "0") or "0"
+                        c.drawString(50, y_position, f"Timer: {row['Timer']} - Vitesse: {vitesse} km/h - Altitude: {altitude} m")
+                    except Exception as e:
+                        print(f"Erreur lors de la lecture des données du fichier CSV: {e}")
+                        continue
+
+                    y_position -= 20
+
+                c.save()
+                print(f"PDF généré avec succès : {pdf_path}")
+
+                return send_file(pdf_path, as_attachment=True, mimetype="application/pdf")
+
+            except Exception as e:
+                print(f"Erreur lors de la génération du PDF: {e}")
+                return jsonify({"error": f"Erreur lors de la génération du PDF: {str(e)}"}), 500
+
 
     def run(self, port=None):
         if port is None:

@@ -25,6 +25,27 @@ const fetchCourses = async () => {
 onMounted(() => {
   fetchCourses();
 });
+
+const downloadPDF = async (fileName) => {
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/api/generate-pdf?file_name=${fileName}`);
+    if (!response.ok) throw new Error("Erreur lors de la génération du PDF");
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileName}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Erreur lors du téléchargement du PDF :", error);
+  }
+};
+
+
 </script>
 
 <template>
@@ -53,12 +74,12 @@ onMounted(() => {
             Ajouté le : {{ new Date(course.uploaded_at).toLocaleDateString() }}
           </p>
           <a
-            :href="`/data/${course.file_name}`"
-            target="_blank"
-            class="inline-block bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-500"
+            @click="downloadPDF(course.file_name)"
+            class="inline-block bg-red-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-red-700 dark:hover:bg-red-500 ml-2"
           >
-            Télécharger
+            Télécharger le PDF
           </a>
+
         </div>
       </div>
     </div>
