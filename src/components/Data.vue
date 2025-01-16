@@ -59,6 +59,7 @@ const speedData = ref({
       data: [],
     },
   ],
+  average: 0, // Valeur par défaut
 })
 
 const paceData = ref({
@@ -73,6 +74,7 @@ const paceData = ref({
       data: [],
     },
   ],
+  average: 0, // Valeur par défaut
 })
 
 const asymmetryData = ref({
@@ -87,6 +89,7 @@ const asymmetryData = ref({
       data: [],
     },
   ],
+  average: 0, // Valeur par défaut
 })
 
 const cadenceData = ref({
@@ -104,11 +107,168 @@ const cadenceData = ref({
   ],
 })
 
+const gpxFile = ref(null);
+
+const handleGpxFileUpload = (event) => {
+  gpxFile.value = event.target.files[0];
+};
+
+const uploadGpxFile = async () => {
+  if (!gpxFile.value) {
+    alert("Veuillez sélectionner un fichier GPX.");
+    return;
+  }
+  const flaskPort = await getFlaskPort();
+  const formData = new FormData();
+  formData.append("file", gpxFile.value);
+  const baseURL = `http://127.0.0.1:${flaskPort}`;
+
+  try {
+    const response = await fetch(`${baseURL}/api/upload-gpx`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      alert(result.message);
+    // Charger les données GPS depuis le fichier
+    await loadGpsData();
+    } else {
+      const error = await response.json();
+      alert(`Erreur : ${error.error}`);
+    }
+    } catch (err) {
+      console.error("Erreur lors du chargement du fichier GPX :", err);
+      alert("Erreur lors du chargement du fichier GPX.");
+    }
+};
+
+const loadGpsData = async () => {
+  const flaskPort = await getFlaskPort();
+  const baseURL = `http://127.0.0.1:${flaskPort}`;
+  let gpsPoints = [];
+
+  try {
+    const response = await fetch(`${baseURL}/api/gps-data`);
+    if (response.ok) {
+      gpsPoints = await response.json();
+
+      console.log("Données GPS récupérées :", gpsPoints);
+
+      // Labels (temps)
+      gpsData.value.labels = gpsPoints.map((point) => (point.Timer / 1000).toFixed(2));
+
+      // Altitude
+      gpsData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Altitude || 0));
+
+      // Vitesse
+      speedData.value.labels = gpsData.value.labels;
+      speedData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Vitesse || 0));
+      speedData.value.average = gpsPoints.length
+        ? calculateAverage(speedData.value.datasets[0].data)
+        : 0;
+
+      console.log("Données de vitesse :", speedData.value);
+
+      // Allure
+      paceData.value.labels = gpsData.value.labels;
+      paceData.value.datasets[0].data = gpsPoints.map((point) => parseFloat(point.Allure || 0));
+      paceData.value.average = gpsPoints.length
+        ? calculateAverage(paceData.value.datasets[0].data)
+        : 0;
+
+      console.log("Données d'allure :", paceData.value);
+
+      // Tracé GPS
+      gpsTrace.value = gpsPoints.map((point) => ({
+        lat: parseFloat(point.Latitude),
+        lng: parseFloat(point.Longitude),
+      }));
+
+      if (map.value) {
+        const polyline = L.polyline(gpsTrace.value, { color: "blue" });
+        polyline.addTo(map.value);
+        map.value.fitBounds(polyline.getBounds());
+      }
+    } else {
+      console.error("Erreur lors du chargement des données GPS :", await response.json());
+    }
+  } catch (error) {
+    console.error("Erreur lors de la requête pour les données GPS :", error);
+  }
+
+  // Définitions par défaut si aucune donnée n'est présente
+  if (gpsPoints.length === 0) {
+    speedData.value.labels = [];
+    speedData.value.datasets[0].data = [];
+    speedData.value.average = 0;
+
+    paceData.value.labels = [];
+    paceData.value.datasets[0].data = [];
+    paceData.value.average = 0;
+  }
+};
+
+
+
+// Calcul d'une valeur moyenne arrondie à 2 décimales
 const calculateAverage = (data) => {
   if (data.length === 0) return 0;
   const sum = data.reduce((total, value) => total + value, 0);
   return (sum / data.length).toFixed(2); // Arrondi à 2 décimales
 };
+
+// Fonction pour calculer la médiane
+const calculateMedian = (data) => {
+  if (data.length === 0) return 0;
+  const sortedData = [...data].sort((a, b) => a - b);
+  const middleIndex = Math.floor(sortedData.length / 2);
+
+  return sortedData.length % 2 === 0
+    ? (sortedData[middleIndex - 1] + sortedData[middleIndex]) / 2
+    : sortedData[middleIndex];
+};
+
+
+// Fonction pour échantillonner les points (toutes les 5 secondes) et la médiane (toutes les 20 secondes)
+const sampleAsymmetryWithMedian = (asymmetry, labels, pointInterval = 5, medianInterval = 20) => {
+  const sampledData = [];
+  const sampledLabels = [];
+  const medianData = [];
+  const medianLabels = [];
+
+  let tempValues = [];
+  let tempLabels = [];
+  let medianTempValues = [];
+
+  labels.forEach((label, index) => {
+    const value = asymmetry[index];
+    tempValues.push(value);
+    tempLabels.push(label);
+    medianTempValues.push(value);
+
+    // Points toutes les `pointInterval` secondes
+    if (tempLabels.length >= pointInterval || index === labels.length - 1) {
+      const average = tempValues.reduce((sum, val) => sum + val, 0) / tempValues.length;
+      sampledData.push(average);
+      sampledLabels.push(tempLabels[tempLabels.length - 1]);
+      tempValues = [];
+      tempLabels = [];
+    }
+
+    // Médiane toutes les `medianInterval` secondes
+    if (medianTempValues.length >= medianInterval || index === labels.length - 1) {
+      const median = calculateMedian(medianTempValues);
+      medianData.push(median);
+      medianLabels.push(label); // Label de fin pour l'intervalle
+      medianTempValues = [];
+    }
+  });
+
+  return { sampledData, sampledLabels, medianData, medianLabels };
+};
+
 
 // Fonction pour calculer l'asymétrie
 const calculateAsymmetry = (data) => {
@@ -142,8 +302,11 @@ const calculateCadence = (data) => {
   return cadenceData;
 };
 
+
 // Calculer les données d'asymétrie et de cadence lors du chargement
 const processAdditionalMetrics = (sensorData) => {
+
+  const sampleInterval = 5; // Échantillonnage toutes les 5 secondes
   const asymmetry = calculateAsymmetry(sensorData);
   const cadence = calculateCadence(sensorData);
   // Echantillonnage pour les graphiques d'asymétrie et de cadence (toutes les 5 secondes)
@@ -151,7 +314,9 @@ const processAdditionalMetrics = (sensorData) => {
 
   // Appliquer l'échantillonnage
   const { sampledData, sampledLabels } = sampleAsymmetryData(asymmetry, labels, 5);
-  
+
+  const median = calculateMedian(sampledData);
+
   asymmetryData.value = {
     labels: sampledLabels, // Labels échantillonnés
     datasets: [
@@ -162,6 +327,14 @@ const processAdditionalMetrics = (sensorData) => {
         borderWidth: 0, // Pas de lignes
         pointRadius: 2, // Taille des points
         showLine: false, // Pas de connexion entre points
+      },
+      {
+        label: 'Médiane (%)',
+        data: new Array(sampledLabels.length).fill(median), // Ligne constante à la médiane
+        borderColor: 'rgba(54, 162, 235, 1)', // Couleur de la ligne
+        borderWidth: 2,
+        pointRadius: 0, // Pas de points
+        fill: false, // Pas de remplissage
       },
     ],
   };
@@ -377,7 +550,7 @@ const saveCourse = async () => {
 
 <template>
   <section class="bg-white dark:bg-gray-900 py-12 pt-28">
-    <div class="max-w-screen-xl mx-auto text-center">
+    <div class="max-w-screen-xl mx-auto mb-20 text-center">
       <h1 class="text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white mb-8">
         Analyse des données de foulée et du parcours
       </h1>
@@ -424,64 +597,66 @@ const saveCourse = async () => {
       </div>
       
       <!-- Graphique de la vitesse -->
-      <div class="max-w-4xl mx-auto mb-12 chart-wrapper">
-              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Vitesse (km/h)</h2>
-              <Line
-                :data="speedData"
-                :options="{
-                  responsive: true,
-                  maintainAspectRatio: true, // Maintient un ratio fixe
-                  scales: {
-                    x: { title: { display: true, text: 'Temps (secondes)' } },
-                    y: { title: { display: true, text: 'Vitesse (km/h)' }, min: 0 },
-                  },
-                }"
-                class="chart-container"
-              />
-            </div>
+      <div class="max-w-4xl mx-auto text-center mb-20 chart-container">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          Vitesse (km/h) 
+        </h2>
+        <div v-if="gpsData.labels.length > 0" class="chart-container">
+          <p class="average-text">
+            Moyenne : {{ speedData.value?.average !== undefined ? speedData.value.average : '--' }} km/h
+          </p>
+          <Line
+            :data="speedData"
+            :options="{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { title: { display: true, text: 'Temps (secondes)' } },
+                y: { title: { display: true, text: 'Vitesse (km/h)' }, min: 0 },
+              },
+              plugins: { legend: { position: 'top' } },
+            }"
+          />
+      </div>
+        <p v-else class="text-gray-500 dark:text-gray-400">
+          Aucune donnée GPS disponible.
+        </p>
       </div>
 
       <!-- Graphique de l'allure -->
-      <div class="max-w-4xl mx-auto mb-12 chart-wrapper">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Allure (min/km)</h2>
-        <Line
-          :data="paceData"
-          :options="{
-            responsive: true,
-            maintainAspectRatio: true, // Maintient un ratio fixe
-            scales: {
-              x: { title: { display: true, text: 'Temps (secondes)' } },
-              y: { title: { display: true, text: 'Allure (min/km)' }, min: 0 },
-            },
-          }"
-          class="chart-container"
-        />
-      </div>
-
-      <!-- Graphique de l'asymétrie -->
-      <div class="max-w-4xl mx-auto mb-12 chart-wrapper">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Asymétrie (%)</h2>
-        <Line
-          :data="asymmetryData"
-          :options="{
-            responsive: true,
-            maintainAspectRatio: true, // Maintient un ratio fixe
-            scales: {
-              x: { title: { display: true, text: 'Temps (secondes)' } },
-              y: { 
-                title: { display: true, text: 'Asymétrie (%)' },
-                suggestedMin: 0, // Min à 0
-                suggestedMax: 100, // Calcul du max dynamique (max ou 100) Math.max(...asymmetryData.value.datasets[0].data, 100)
+      <div class="max-w-4xl mx-auto text-center mb-20 chart-container">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Allure (min/km) 
+          </h2>
+        <div v-if="gpsData.labels.length > 0" class="chart-container">
+          <p class="average-text">
+            Moyenne : {{ paceData.value?.average !== undefined ? paceData.value.average : '--' }} min/km
+          </p>
+          <Line
+            :data="paceData"
+            :options="{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { title: { display: true, text: 'Temps (secondes)' } },
+                y: { title: { display: true, text: 'Allure (min/km)' }, min: 0, max: 20 },
               },
-            },
-          }"
-          class="chart-container"
-        />
+              plugins: { legend: { position: 'top' } },
+            }"/>
+        </div>
+        <p v-else class="text-gray-500 dark:text-gray-400">
+          Aucune donnée GPS disponible.
+        </p>
       </div>
 
       <!-- Graphique de la cadence -->
-      <div class="max-w-4xl mx-auto mb-12 chart-wrapper">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Cadence (pas par minute) : (Moyenne : {{ cadenceData.average || '--' }} PPM)</h2>
+      <div class="max-w-4xl mx-auto mb-20 chart-wrapper">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          Cadence (pas par minute)
+        </h2>
+        <p class="average-text">
+          Moyenne : {{ cadenceData.value?.average !== undefined ? cadenceData.value.average : '--' }} pas/min
+        </p>
         <Line
           :data="cadenceData"
           :options="{
@@ -496,8 +671,33 @@ const saveCourse = async () => {
         />
       </div>
 
+
+      <!-- Graphique de l'asymétrie -->
+      <div class="max-w-4xl mx-auto mb-20 chart-wrapper">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          Asymétrie (%) et Médiane (5 secondes)
+        </h2>
+        <Line
+          :data="asymmetryData"
+          :options="{
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              x: { title: { display: true, text: 'Temps (secondes)' } },
+              y: {
+                title: { display: true, text: 'Asymétrie (%)' },
+                suggestedMin: 0, // Min à 0
+                suggestedMax: 100, // Calcul du max dynamique
+              },
+            },
+            plugins: { legend: { position: 'top' } },
+          }"
+          class="chart-container"
+        />
+      </div>
+
       <!-- Graphique de l'altitude -->
-      <div class="max-w-4xl mx-auto mb-12">
+      <div class="max-w-4xl mx-auto mb-20">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Altitude pendant la course
         </h2>
@@ -512,7 +712,7 @@ const saveCourse = async () => {
                 y: {
                   title: { display: true, text: 'Altitude (mètres)' },
                   min: 0,
-                  max: Math.max(...gpsData.datasets[0].data) + 5, // Dynamique -> Altitude max + 5m
+                  max: Math.round(Math.max(...gpsData.datasets[0].data) + 50, 0), // Dynamique -> Altitude max + 50m arrondi à l'entier supérieur
                 },
               },
               plugins: { legend: { position: 'top' } },
@@ -525,14 +725,16 @@ const saveCourse = async () => {
       </div>
 
       <!-- Carte OpenStreetMap -->
-      <div class="max-w-4xl mx-auto mb-12">
+      <div class="max-w-4xl mx-auto mb-20">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Tracé GPS de la course
         </h2>
         <div id="map" class="map-container"></div>
       </div>
 
-      <button
+      <!-- Bouton pour Charger les données gps via un fichier GPX -->
+      <div class="max-w-4xl mx-auto mb-12">
+        <button
         @click="loadData"
         class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 mt-8"
       >
@@ -546,6 +748,22 @@ const saveCourse = async () => {
       >
         Enregistrer la course
       </button>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Charger un fichier GPX</h2>
+        <input
+          type="file"
+          id="gpxFile"
+          accept=".gpx"
+          @change="handleGpxFileUpload"
+          class="mb-4"
+        />
+        <button
+          @click="uploadGpxFile"
+          class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
+        >
+          Charger GPS via fichier GPX
+        </button>
+      </div>
+    </div>
     
   </section>
 </template>
@@ -563,4 +781,11 @@ const saveCourse = async () => {
   border: 2px solid #ccc;
   border-radius: 8px;
 }
+
+.average-text {
+  font-size: 1rem;
+  color: #4b5563; /* Gris moyen */
+  margin-bottom: 0.5rem;
+}
+
 </style>

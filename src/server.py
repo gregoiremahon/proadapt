@@ -13,6 +13,7 @@ import gpxpy
 from flask import send_file
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from geopy.distance import geodesic
 
 
 def load_csv_file_to_database(csv_file_path, db_name="sensor_data.db"):
@@ -426,98 +427,76 @@ class Server:
                 print(f"Erreur lors du chargement du fichier CSV dans la base de données : {e}")
                 return jsonify({"error": str(e)}), 500
 
-        @app.route('/api/gpx-to-csv', methods=['POST'])
-        def gpx_to_csv():
+        @app.route('/api/upload-gpx', methods=['POST'])
+        def upload_gpx():
             if 'file' not in request.files:
                 return jsonify({"error": "Aucun fichier GPX envoyé."}), 400
 
             file = request.files['file']
             gpx_data = file.read().decode('utf-8')
 
-            # Analyse du fichier GPX
-            gpx = gpxpy.parse(gpx_data)
-
-            # Préparer les données pour le CSV
-            data = []
-            for track in gpx.tracks:
-                for segment in track.segments:
-                    for point in segment.points:
-                        data.append({
-                            "Timer": point.time.strftime("%Y-%m-%d %H:%M:%S") if point.time else "",
-                            "Latitude": point.latitude,
-                            "Longitude": point.longitude,
-                            "Altitude": point.elevation
-                        })
-
-            # Sauvegarde en CSV
-            csv_file_path = os.path.join(os.getcwd(), "converted_gpx_data.csv")
-            with open(csv_file_path, mode='w', newline='') as csv_file:
-                writer = csv.DictWriter(csv_file, fieldnames=["Timer", "Latitude", "Longitude", "Altitude"], delimiter=";")
-                writer.writeheader()
-                writer.writerows(data)
-
-            print(f"Fichier CSV créé : {csv_file_path}")
-            return jsonify({"message": "Fichier GPX converti en CSV avec succès.", "file_path": csv_file_path}), 200
-
-        @app.route('/api/generate-pdf', methods=['GET'])
-        def generate_pdf():
             try:
-                file_name = request.args.get('file_name')
-                if not file_name:
-                    print("Erreur: Nom du fichier manquant.")
-                    return jsonify({"error": "Nom du fichier manquant."}), 400
+                # Analyse du fichier GPX
+                gpx = gpxpy.parse(gpx_data)
 
-                csv_file_path = os.path.join(os.getcwd(), "data", file_name)
-                print(f"Chemin du fichier CSV : {csv_file_path}")
+                # Préparer les données pour le fichier CSV dédié aux données GPS
+                data = []
+                previous_point = None
+                for track in gpx.tracks:
+                    for segment in track.segments:
+                        for point in segment.points:
+                            if previous_point:
+                                # Calculer la distance et la vitesse entre les points
+                                current_coords = (point.latitude, point.longitude)
+                                previous_coords = (previous_point.latitude, previous_point.longitude)
+                                distance_km = geodesic(previous_coords, current_coords).km
+                                time_diff_h = (point.time - previous_point.time).total_seconds() / 3600 if point.time and previous_point.time else 0
+                                speed_kmh = distance_km / time_diff_h if time_diff_h > 0 else 0
+                                pace_min_km = (60 / speed_kmh) if speed_kmh > 0 else 0
+                            else:
+                                speed_kmh = 0
+                                pace_min_km = 0
 
-                if not os.path.isfile(csv_file_path):
-                    print("Erreur: Fichier introuvable.")
-                    return jsonify({"error": "Fichier introuvable."}), 404
+                            data.append({
+                                "Timer": point.time.timestamp() if point.time else "",
+                                "Latitude": point.latitude,
+                                "Longitude": point.longitude,
+                                "Altitude": point.elevation,
+                                "Vitesse": speed_kmh,
+                                "Allure": pace_min_km,
+                            })
+                            previous_point = point
 
-                pdf_path = os.path.join(os.getcwd(), "generated_reports", f"{file_name}.pdf")
-                os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+                # Sauvegarder les données GPS dans un fichier dédié
+                gps_csv_file_path = os.path.join(os.getcwd(), "gps_data.csv")
+                with open(gps_csv_file_path, mode='w', newline='') as csv_file:
+                    writer = csv.DictWriter(csv_file, fieldnames=["Timer", "Latitude", "Longitude", "Altitude", "Vitesse", "Allure"], delimiter=";")
+                    writer.writeheader()
+                    writer.writerows(data)
 
-                with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
-                    reader = csv.DictReader(csvfile, delimiter=";")
-                    data = list(reader)
-
-                print(f"Nombre de lignes lues: {len(data)}")
-
-                if len(data) == 0:
-                    print("Erreur: Aucune donnée dans le fichier CSV.")
-                    return jsonify({"error": "Aucune donnée trouvée dans le fichier."}), 500
-
-                # Création du PDF
-                c = canvas.Canvas(pdf_path, pagesize=letter)
-                c.setFont("Helvetica-Bold", 14)
-                c.drawString(50, 750, f"Rapport de la course : {file_name}")
-
-                c.setFont("Helvetica", 12)
-                y_position = 720
-                for index, row in enumerate(data[:20]):
-                    if y_position < 100:
-                        c.showPage()
-                        c.setFont("Helvetica", 12)
-                        y_position = 750
-
-                    try:
-                        vitesse = row.get("Vitesse", "0") or "0"  # Vérifier si la clé existe
-                        altitude = row.get("Altitude", "0") or "0"
-                        c.drawString(50, y_position, f"Timer: {row['Timer']} - Vitesse: {vitesse} km/h - Altitude: {altitude} m")
-                    except Exception as e:
-                        print(f"Erreur lors de la lecture des données du fichier CSV: {e}")
-                        continue
-
-                    y_position -= 20
-
-                c.save()
-                print(f"PDF généré avec succès : {pdf_path}")
-
-                return send_file(pdf_path, as_attachment=True, mimetype="application/pdf")
+                print(f"Données GPS enregistrées dans le fichier : {gps_csv_file_path}")
+                return jsonify({"message": "Données GPX chargées et sauvegardées dans gps_data.csv.", "file_path": gps_csv_file_path}), 200
 
             except Exception as e:
-                print(f"Erreur lors de la génération du PDF: {e}")
-                return jsonify({"error": f"Erreur lors de la génération du PDF: {str(e)}"}), 500
+                print(f"Erreur lors de l'analyse du fichier GPX : {e}")
+                return jsonify({"error": f"Erreur lors de l'analyse du fichier GPX : {str(e)}"}), 500
+
+        @app.route('/api/gps-data', methods=['GET'])
+        def get_gps_data():
+            gps_csv_file_path = os.path.join(os.getcwd(), "gps_data.csv")
+
+            # Vérifier si le fichier existe
+            if not os.path.isfile(gps_csv_file_path):
+                return jsonify({"error": "Fichier gps_data.csv non trouvé."}), 404
+
+            try:
+                with open(gps_csv_file_path, mode='r', newline='') as csv_file:
+                    reader = csv.DictReader(csv_file, delimiter=";")
+                    data = [row for row in reader]
+                return jsonify(data), 200
+            except Exception as e:
+                return jsonify({"error": f"Erreur lors de la lecture du fichier GPS : {str(e)}"}), 500
+
 
 
     def run(self, port=None):

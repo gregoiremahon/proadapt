@@ -28,7 +28,7 @@ onMounted(() => {
 
 const downloadPDF = async (fileName) => {
   try {
-    const response = await fetch(`http://127.0.0.1:5000/api/generate-pdf?file_name=${fileName}`);
+    const response = await fetch(`http://127.0.0.1:5173/api/generate-pdf?file_name=${fileName}`);
     if (!response.ok) throw new Error("Erreur lors de la génération du PDF");
 
     const blob = await response.blob();
